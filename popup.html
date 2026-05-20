@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>URL Postfix Manager</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <canvas id="confettiCanvas"></canvas>
+
+  <div class="container">
+    <div class="topbar">
+      <input type="text" id="searchInput" placeholder="Поиск…" autocomplete="off" />
+      <button id="addToggleBtn" class="icon-btn" title="Добавить постфикс">+</button>
+      <button id="addFolderBtn" class="icon-btn" title="Новая папка">📁</button>
+    </div>
+
+    <div class="add-section hidden" id="addSection">
+      <input type="text" id="labelInput" placeholder="Название" />
+      <input type="text" id="postfixInput" placeholder="theme=dark&lang=ru" />
+      <div class="add-row">
+        <select id="folderSelect">
+          <option value="">Без папки</option>
+        </select>
+        <button id="addBtn">Сохранить</button>
+      </div>
+    </div>
+
+    <div class="current-url" id="currentUrl">—</div>
+
+    <div id="tree" class="tree"></div>
+
+    <div id="emptyState" class="empty-state" hidden>
+      Пусто. Нажмите <b>+</b>, чтобы добавить постфикс.
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

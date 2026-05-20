@@ -1,0 +1,373 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #1a1b1e;
+  --bg-elev: #25262b;
+  --bg-elev-2: #2c2e33;
+  --border: #373a40;
+  --border-hover: #4a90e2;
+  --text: #e9ecef;
+  --text-dim: #909296;
+  --text-faint: #5c5f66;
+  --accent: #4a90e2;
+  --accent-hover: #5ca0f2;
+  --danger: #ff6b6b;
+  --pill-bg: #373a40;
+}
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  width: 360px;
+  max-height: 560px;
+  overflow: hidden;
+}
+
+#confettiCanvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.container {
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 560px;
+  overflow-y: auto;
+}
+
+/* --- top bar --- */
+
+.topbar {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+#searchInput {
+  flex: 1;
+  padding: 7px 10px;
+  background: var(--bg-elev);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+#searchInput:focus {
+  border-color: var(--accent);
+}
+
+.icon-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elev);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.icon-btn:hover {
+  background: var(--bg-elev-2);
+  border-color: var(--accent);
+}
+
+.icon-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* --- add form --- */
+
+.add-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.add-section.hidden {
+  display: none;
+}
+
+.add-section input,
+.add-section select {
+  padding: 6px 8px;
+  background: var(--bg-elev-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: inherit;
+  outline: none;
+}
+
+.add-section input:focus,
+.add-section select:focus {
+  border-color: var(--accent);
+}
+
+.add-row {
+  display: flex;
+  gap: 6px;
+}
+
+.add-row select {
+  flex: 1;
+}
+
+#addBtn {
+  padding: 6px 14px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+#addBtn:hover {
+  background: var(--accent-hover);
+}
+
+/* --- current url --- */
+
+.current-url {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  padding: 5px 8px;
+  background: var(--bg-elev);
+  border-radius: 4px;
+  word-break: break-all;
+  font-family: ui-monospace, monospace;
+  max-height: 38px;
+  overflow: hidden;
+}
+
+/* --- tree (folders + items) --- */
+
+.tree {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.folder {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.folder.drag-over {
+  border-color: var(--accent);
+  background: var(--bg-elev-2);
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.folder-header:hover {
+  background: var(--bg-elev-2);
+}
+
+.folder-chevron {
+  font-size: 10px;
+  color: var(--text-dim);
+  width: 10px;
+  transition: transform 0.15s;
+}
+
+.folder.collapsed .folder-chevron {
+  transform: rotate(-90deg);
+}
+
+.folder-icon {
+  font-size: 13px;
+}
+
+.folder-name {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-name[contenteditable="true"] {
+  outline: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+.folder-count {
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.folder-del {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.folder-del:hover {
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.folder-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 6px 6px;
+}
+
+.folder.collapsed .folder-items {
+  display: none;
+}
+
+/* --- postfix item --- */
+
+.postfix-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  background: var(--bg-elev-2);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.1s, border-color 0.1s;
+}
+
+.postfix-item:hover {
+  border-color: var(--accent);
+}
+
+.postfix-item.dragging {
+  opacity: 0.4;
+}
+
+.postfix-item.no-folder {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+}
+
+.postfix-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.postfix-label {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.postfix-value {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-family: ui-monospace, monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.postfix-count {
+  font-size: 10px;
+  color: var(--text-dim);
+  background: var(--pill-bg);
+  padding: 2px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.postfix-count.milestone {
+  background: linear-gradient(135deg, #f7b733, #fc4a1a);
+  color: #fff;
+  font-weight: 600;
+}
+
+.delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.delete-btn:hover {
+  color: var(--danger);
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 24px 10px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.empty-state b {
+  color: var(--accent);
+}
+
+/* scrollbar */
+
+.container::-webkit-scrollbar {
+  width: 6px;
+}
+.container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.container::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+.container::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}
