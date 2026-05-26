@@ -48,6 +48,12 @@ body {
   overflow-y: auto;
 }
 
+.search-label-badge {
+    background-color: rgba(255, 243, 205, 0.7);
+    color: #000000;
+    border-radius: 2px; 
+}
+
 /* --- top bar --- */
 
 .topbar {

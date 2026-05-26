@@ -120,16 +120,25 @@ function render() {
   // отрисовка папок
   for (const folder of folders) {
     const itemsInFolder = sortPostfixes(visible.filter(p => p.folderId === folder.id));
-    // показываем папку, даже если она пустая после фильтра, только если нет поиска
-    if (searchQuery && !matchesSearchFolder(folder)) continue;
 
-    // если папка попадает под критерии поиска, то отображаем все её элементы
-    if (matchesSearchFolder(folder)) {
-      tree.appendChild(renderFolder(folder, sortPostfixes(state.postfixes.filter(p => !p.folderId))));
+    if (!searchQuery) {
+      tree.appendChild(renderFolder(folder, itemsInFolder));
+
+      continue;
+    }
+    
+    if (itemsInFolder.length > 0) {
+      console.log('render if itemst to folder');
+      tree.appendChild(renderFolder(folder, itemsInFolder));
+
       continue;
     }
 
-    tree.appendChild(renderFolder(folder, itemsInFolder));
+    // если папка попадает под критерии поиска, то отображаем все её элементы
+    if (matchesSearchFolder(folder)) {
+      tree.appendChild(renderFolder(folder, sortPostfixes(state.postfixes.filter(p => p.folderId === folder.id))));
+      continue;
+    }
   }
 
   // root: рендерим как «псевдо-папку» без шапки — просто список айтемов
@@ -165,7 +174,7 @@ function renderFolder(folder, items) {
 
   const name = document.createElement('span');
   name.className = 'folder-name';
-  name.textContent = folder.name;
+  name.innerHTML =  folder.name.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
   name.title = 'Двойной клик — переименовать';
   name.addEventListener('dblclick', (e) => {
     e.stopPropagation();
@@ -218,11 +227,12 @@ function renderItem(item, isRoot) {
 
   const label = document.createElement('div');
   label.className = 'postfix-label';
-  label.textContent = item.label;
+  label.innerHTML =  item.label.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
 
   const value = document.createElement('div');
   value.className = 'postfix-value';
   value.textContent = item.postfix;
+  value.innerHTML =  item.postfix.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
 
   info.appendChild(label);
   info.appendChild(value);
