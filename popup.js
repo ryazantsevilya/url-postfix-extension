@@ -79,10 +79,16 @@ async function refresh() {
 
 // ==================== render ====================
 
-function matchesSearch(p) {
+function matchesSearchPostfix(p) {
   if (!searchQuery) return true;
   const q = searchQuery.toLowerCase();
   return p.label.toLowerCase().includes(q) || p.postfix.toLowerCase().includes(q);
+}
+
+function matchesSearchFolder(folder) {
+  if (!searchQuery) return true;
+  const q = searchQuery.toLowerCase();
+  return folder.name.toLowerCase().includes(q);
 }
 
 function sortPostfixes(arr) {
@@ -98,7 +104,7 @@ function render() {
   const empty = document.getElementById('emptyState');
   tree.innerHTML = '';
 
-  const visible = state.postfixes.filter(matchesSearch);
+  const visible = state.postfixes.filter(matchesSearchPostfix);
   if (state.postfixes.length === 0) {
     empty.hidden = false;
     return;
@@ -115,7 +121,14 @@ function render() {
   for (const folder of folders) {
     const itemsInFolder = sortPostfixes(visible.filter(p => p.folderId === folder.id));
     // показываем папку, даже если она пустая после фильтра, только если нет поиска
-    if (searchQuery && itemsInFolder.length === 0) continue;
+    if (searchQuery && !matchesSearchFolder(folder)) continue;
+
+    // если папка попадает под критерии поиска, то отображаем все её элементы
+    if (matchesSearchFolder(folder)) {
+      tree.appendChild(renderFolder(folder, sortPostfixes(state.postfixes.filter(p => !p.folderId))));
+      continue;
+    }
+
     tree.appendChild(renderFolder(folder, itemsInFolder));
   }
 
