@@ -308,6 +308,8 @@ async function addPostfix() {
 }
 
 async function deletePostfix(id) {
+  if (!confirm(`Вы уверены что хотите удалить постфикс?`)) return;
+
   state.postfixes = state.postfixes.filter(p => p.id !== id);
   await saveData(state);
   render();
