@@ -215,12 +215,15 @@ body {
 }
 
 .folder-icon {
+  background: url('svg/folder_icon.svg') left center no-repeat;
+  width: 24px;
+  height: 24px;
   font-size: 13px;
 }
 
 .folder-name {
   flex: 1;
-  font-size: 12px;
+  font-size: 17px;
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -297,7 +300,7 @@ body {
 }
 
 .postfix-label {
-  font-size: 12px;
+  font-size: 15px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;

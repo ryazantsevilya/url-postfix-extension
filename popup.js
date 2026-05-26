@@ -30,10 +30,29 @@ async function saveData(data) {
 
 // ==================== url logic ====================
 
+function templatePostfix(postfix) {
+  // Находим все уникальные ключи в шаблоне
+  const matches = postfix.match(/\{(\w+)\}/g) || [];
+  const uniqueKeys = [...new Set(matches.map(m => m.slice(1, -1)))];
+  
+  let result = postfix;
+  
+  uniqueKeys.forEach(key => {
+      const value = prompt(`Введите значение для "${key}":`) || '';
+
+      result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+  });
+  
+  return result;
+}
+
 function parsePostfix(raw) {
   let s = raw.trim();
+  s = templatePostfix(s);
+
   if (s.startsWith('?') || s.startsWith('&')) s = s.slice(1);
   if (!s) return [];
+  
   return s.split('&').map(pair => {
     const eq = pair.indexOf('=');
     if (eq === -1) return [decodeURIComponent(pair), ''];
@@ -129,7 +148,7 @@ function renderFolder(folder, items) {
 
   const icon = document.createElement('span');
   icon.className = 'folder-icon';
-  icon.textContent = '📁';
+  icon.textContent = '';
 
   const name = document.createElement('span');
   name.className = 'folder-name';
@@ -255,7 +274,7 @@ function populateFolderSelect() {
   for (const f of state.folders) {
     const opt = document.createElement('option');
     opt.value = f.id;
-    opt.textContent = '📁 ' + f.name;
+    opt.textContent = f.name;
     sel.appendChild(opt);
   }
   if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
