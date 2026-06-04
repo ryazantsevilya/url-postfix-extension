@@ -31,9 +31,15 @@ function templatePostfix(postfix) {
   let result = postfix;
   
   uniqueKeys.forEach(key => {
-      const value = prompt(`Введите значение для "${key}":`) || '';
+      const value = prompt(`Введите значение для "${key}":`);
 
-      result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+      if (value === null) {
+        result = null;
+      }
+
+      if (value !== null) {
+        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
+      }
   });
   
   return result;
@@ -42,6 +48,10 @@ function templatePostfix(postfix) {
 function parsePostfix(raw) {
   let s = raw.trim();
   s = templatePostfix(s);
+
+  if (s === null) {
+    return null;
+  }
 
   if (s.startsWith('?') || s.startsWith('&')) s = s.slice(1);
   if (!s) return [];
@@ -55,7 +65,14 @@ function parsePostfix(raw) {
 
 function applyPostfix(url, postfixRaw) {
   const u = new URL(url);
-  for (const [k, v] of parsePostfix(postfixRaw)) u.searchParams.set(k, v);
+
+  parseResult = parsePostfix(postfixRaw);
+
+  if (parseResult === null) {
+    return null;
+  }
+
+  for (const [k, v] of parseResult) u.searchParams.set(k, v);
   return u.toString();
 }
 
@@ -512,7 +529,24 @@ async function applyToCurrentTab(id) {
 async function navigateAndClose(tabId, postfixItem, url) {
   let newUrl;
   try {
+    if (postfixItem.postfix.startsWith('http://') || postfixItem.postfix.startsWith('https://')) {
+      newUrl = templatePostfix(postfixItem.postfix);
+
+      if (newUrl === null) {
+        return;
+      }
+
+      await addHistory(postfixItem, tabId, url, newUrl);
+      await chrome.tabs.create({ url: newUrl });
+
+      return;
+    }
+
     newUrl = applyPostfix(url, postfixItem.postfix);
+  
+    if (newUrl === null) {
+      return;
+    }
   } catch (e) {
     alert('Не удалось применить постфикс: ' + e.message);
     return;
