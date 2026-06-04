@@ -6,22 +6,15 @@ const STORAGE_KEY = 'data_v2';
  * Структура хранилища:
  * {
  *   postfixes: [{id, label, postfix, count, createdAt, folderId|null, order}],
- *   folders:   [{id, name, collapsed, order}]
+ *   folders:   [{id, name, collapsed, order}],
+ *   history: [{id, postfixId, url, newUrl, tabId, createdAt}]
  * }
  */
 async function loadData() {
   const r = await chrome.storage.local.get(STORAGE_KEY);
   if (r[STORAGE_KEY]) return r[STORAGE_KEY];
 
-  // миграция со старой версии
-  const old = await chrome.storage.local.get('postfixes');
-  if (old.postfixes) {
-    return {
-      postfixes: old.postfixes.map((p, i) => ({ ...p, folderId: null, order: i })),
-      folders: []
-    };
-  }
-  return { postfixes: [], folders: [] };
+  return { postfixes: [], folders: [], history: [] };
 }
 
 async function saveData(data) {
@@ -68,7 +61,7 @@ function applyPostfix(url, postfixRaw) {
 
 // ==================== state ====================
 
-let state = { postfixes: [], folders: [] };
+let state = { postfixes: [], folders: [], history: [] };
 let searchQuery = '';
 
 async function refresh() {
@@ -101,8 +94,10 @@ function sortPostfixes(arr) {
 
 function render() {
   const tree = document.getElementById('tree');
+  const historyElement = document.getElementById('historySection');
   const empty = document.getElementById('emptyState');
   tree.innerHTML = '';
+  historyElement.innerHTML = '';
 
   const visible = state.postfixes.filter(matchesSearchPostfix);
   if (state.postfixes.length === 0) {
@@ -116,6 +111,8 @@ function render() {
 
   // постфиксы без папки
   const rootItems = sortPostfixes(visible.filter(p => !p.folderId));
+
+  const history = [...state.history].sort((a, b) =>  (b.createdAt || 0) - (a.createdAt || 0));
 
   // отрисовка папок
   for (const folder of folders) {
@@ -153,6 +150,57 @@ function render() {
     }
     tree.appendChild(rootBox);
   }
+
+  // история использования постфиксов
+  for (const historyItem of history) {
+      historyElement.appendChild(renderHistoryItem(historyItem));
+  }
+}
+
+function renderHistoryItem(historyItem) {
+  const li = document.createElement('div');
+  li.className = 'history-item no-folder';
+  li.dataset.id = historyItem.id;
+
+  const info = document.createElement('div');
+  info.className = 'history-info';
+  console.log(historyItem);
+  const postfix = state.postfixes.find(p => p.id === historyItem.postfixId);  
+
+  const label = document.createElement('div');
+  label.className = 'history-label';
+  const createdAt = new Date(historyItem.createdAt);
+  const createdAtString = ' (' +  createdAt.toLocaleString() + ')';
+  if (!postfix) {
+    label.innerHTML = 'УДАЛЕН' + createdAtString;
+  } else {
+    label.innerHTML =  postfix.label.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>') + createdAtString;;
+  }
+
+  const value = document.createElement('div');
+  value.className = 'history-value';
+  value.textContent = historyItem.newUrl;
+  value.innerHTML =  historyItem.newUrl.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
+
+  info.appendChild(label);
+  info.appendChild(value);
+
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.textContent = '×';
+  del.title = 'Удалить';
+
+  del.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteHistory(historyItem.id);
+  });
+
+  li.appendChild(info);
+  li.appendChild(del);
+
+  li.addEventListener('click', () => applyToCurrentTab(historyItem.postfixId));
+
+  return li;
 }
 
 function renderFolder(folder, items) {
@@ -338,6 +386,29 @@ async function deletePostfix(id) {
   render();
 }
 
+async function deleteHistory(id) {
+  if (!confirm(`Вы уверены что хотите удалить элемент истории?`)) return;
+
+  state.history = state.history.filter(p => p.id !== id);
+  await saveData(state);
+  render();
+}
+
+async function addHistory(postfix, tabId, url, newUrl) {
+  state.history.push({
+    id: crypto.randomUUID(),
+    postfixId: postfix.id,
+    url: url,
+    newUrl: newUrl,
+    tabId: tabId,
+    createdAt: Date.now(),
+  });
+
+  await saveData(state);
+
+  render();
+}
+
 async function movePostfixToFolder(id, folderId) {
   const p = state.postfixes.find(x => x.id === id);
   if (!p) return;
@@ -431,23 +502,26 @@ async function applyToCurrentTab(id) {
   if (item.count >= 100 && prev < item.count && item.count % 100 === 0) {
     launchConfetti();
     // короткая задержка, чтобы конфетти успели стартовать перед переходом
-    setTimeout(() => navigateAndClose(tab.id, item.postfix, tab.url), 600);
+    setTimeout(() => navigateAndClose(tab.id, item, tab.url), 600);
     return;
   }
 
-  navigateAndClose(tab.id, item.postfix, tab.url);
+  navigateAndClose(tab.id, item, tab.url);
 }
 
-async function navigateAndClose(tabId, postfix, url) {
+async function navigateAndClose(tabId, postfixItem, url) {
   let newUrl;
   try {
-    newUrl = applyPostfix(url, postfix);
+    newUrl = applyPostfix(url, postfixItem.postfix);
   } catch (e) {
     alert('Не удалось применить постфикс: ' + e.message);
     return;
   }
+
+  await addHistory(postfixItem, tabId, url, newUrl);
+
   await chrome.tabs.update(tabId, { url: newUrl });
-  window.close();
+  //window.close();
 }
 
 // ==================== add form toggle ====================
@@ -455,6 +529,18 @@ async function navigateAndClose(tabId, postfix, url) {
 function toggleAddForm(force) {
   const sec = document.getElementById('addSection');
   const btn = document.getElementById('addToggleBtn');
+  const show = typeof force === 'boolean' ? force : sec.hidden;
+  sec.hidden = !show;
+  btn.classList.toggle('active', !show);
+  sec.classList.toggle('hidden', show);
+  if (show) setTimeout(() => document.getElementById('labelInput').focus(), 50);
+}
+
+// ==================== history form toggle ====================
+
+function toggleHistory(force) {
+  const sec = document.getElementById('historySection');
+  const btn = document.getElementById('historyToggleBtn');
   const show = typeof force === 'boolean' ? force : sec.hidden;
   sec.hidden = !show;
   btn.classList.toggle('active', !show);
@@ -521,6 +607,7 @@ async function showCurrentUrl() {
 
 document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('addToggleBtn').addEventListener('click', () => toggleAddForm());
+  document.getElementById('historyToggleBtn').addEventListener('click', () => toggleHistory());
   document.getElementById('addFolderBtn').addEventListener('click', addFolder);
   document.getElementById('addBtn').addEventListener('click', addPostfix);
 
