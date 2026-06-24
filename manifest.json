@@ -3,7 +3,7 @@
   "name": "URL Postfix Manager",
   "version": "1.0.0",
   "description": "Добавляет сохранённые query-параметры к текущему URL. Список сортируется по частоте использования.",
-  "permissions": ["storage", "activeTab", "tabs"],
+  "permissions": ["storage", "activeTab", "tabs", "contextMenus", "scripting"],
   "action": {
     "default_popup": "popup.html",
     "default_title": "URL Postfix Manager",
@@ -17,5 +17,9 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
   }
 }

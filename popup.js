@@ -1,90 +1,18 @@
-// ==================== storage ====================
+import { applyToCurrentTab } from './services/postfix.js';
+import { deleteHistory, opneHistoryItem } from './services/history.js';
+import { state } from './state/AppState.js'
 
-const STORAGE_KEY = 'data_v2';
-
-/**
- * Структура хранилища:
- * {
- *   postfixes: [{id, label, postfix, count, createdAt, folderId|null, order}],
- *   folders:   [{id, name, collapsed, order}],
- *   history: [{id, postfixId, url, newUrl, tabId, createdAt}]
- * }
- */
-async function loadData() {
-  const r = await chrome.storage.local.get(STORAGE_KEY);
-  if (r[STORAGE_KEY]) return r[STORAGE_KEY];
-
-  return { postfixes: [], folders: [], history: [] };
-}
-
-async function saveData(data) {
-  await chrome.storage.local.set({ [STORAGE_KEY]: data });
-}
-
-// ==================== url logic ====================
-
-function templatePostfix(postfix) {
-  // Находим все уникальные ключи в шаблоне
-  const matches = postfix.match(/\{(\w+)\}/g) || [];
-  const uniqueKeys = [...new Set(matches.map(m => m.slice(1, -1)))];
-  
-  let result = postfix;
-  
-  uniqueKeys.forEach(key => {
-      const value = prompt(`Введите значение для "${key}":`);
-
-      if (value === null) {
-        result = null;
-      }
-
-      if (value !== null) {
-        result = result.replace(new RegExp(`\\{${key}\\}`, 'g'), value);
-      }
-  });
-  
-  return result;
-}
-
-function parsePostfix(raw) {
-  let s = raw.trim();
-  s = templatePostfix(s);
-
-  if (s === null) {
-    return null;
-  }
-
-  if (s.startsWith('?') || s.startsWith('&')) s = s.slice(1);
-  if (!s) return [];
-  
-  return s.split('&').map(pair => {
-    const eq = pair.indexOf('=');
-    if (eq === -1) return [decodeURIComponent(pair), ''];
-    return [decodeURIComponent(pair.slice(0, eq)), decodeURIComponent(pair.slice(eq + 1))];
-  });
-}
-
-function applyPostfix(url, postfixRaw) {
-  const u = new URL(url);
-
-  parseResult = parsePostfix(postfixRaw);
-
-  if (parseResult === null) {
-    return null;
-  }
-
-  for (const [k, v] of parseResult) u.searchParams.set(k, v);
-  return u.toString();
-}
-
-// ==================== state ====================
-
-let state = { postfixes: [], folders: [], history: [] };
 let searchQuery = '';
 
-async function refresh() {
-  state = await loadData();
+export async function refresh() {
+  refreshChromeMenu();
+
   populateFolderSelect();
   render();
+}
+
+async function refreshChromeMenu() {
+  chrome.runtime.sendMessage({ action: 'refreshMenu' });
 }
 
 // ==================== render ====================
@@ -107,6 +35,55 @@ function sortPostfixes(arr) {
     if (b.count !== a.count) return b.count - a.count;
     return (b.createdAt || 0) - (a.createdAt || 0);
   });
+}
+
+function renderHistoryItem(historyItem) {
+  const li = document.createElement('div');
+  li.className = 'history-item no-folder';
+  li.dataset.id = historyItem.id;
+
+  const info = document.createElement('div');
+  info.className = 'history-info';
+
+  const postfix = state.postfixes.find(p => p.id === historyItem.postfix.id);  
+
+  const label = document.createElement('div');
+  label.className = 'history-label';
+  const createdAt = new Date(historyItem.createdAt);
+  const createdAtString = ' (' +  createdAt.toLocaleString() + ')';
+  if (!postfix) {
+    label.innerHTML = '[DELETED]';
+  } 
+
+  label.innerHTML +=  historyItem.postfix.label.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>') + createdAtString;;
+
+  const value = document.createElement('div');
+  value.className = 'history-value';
+  value.textContent = historyItem.newUrl;
+  value.innerHTML =  historyItem.newUrl.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
+
+  info.appendChild(label);
+  info.appendChild(value);
+
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.textContent = '×';
+  del.title = 'Удалить';
+
+  del.addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteHistory(historyItem.id);
+
+    refresh();
+  });
+
+  li.appendChild(info);
+  li.appendChild(del);
+  li.addEventListener('click', async () => {
+    await opneHistoryItem(historyItem);
+  });
+
+  return li;
 }
 
 function render() {
@@ -142,7 +119,6 @@ function render() {
     }
     
     if (itemsInFolder.length > 0) {
-      console.log('render if itemst to folder');
       tree.appendChild(renderFolder(folder, itemsInFolder));
 
       continue;
@@ -174,52 +150,6 @@ function render() {
   }
 }
 
-function renderHistoryItem(historyItem) {
-  const li = document.createElement('div');
-  li.className = 'history-item no-folder';
-  li.dataset.id = historyItem.id;
-
-  const info = document.createElement('div');
-  info.className = 'history-info';
-  console.log(historyItem);
-  const postfix = state.postfixes.find(p => p.id === historyItem.postfixId);  
-
-  const label = document.createElement('div');
-  label.className = 'history-label';
-  const createdAt = new Date(historyItem.createdAt);
-  const createdAtString = ' (' +  createdAt.toLocaleString() + ')';
-  if (!postfix) {
-    label.innerHTML = 'УДАЛЕН' + createdAtString;
-  } else {
-    label.innerHTML =  postfix.label.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>') + createdAtString;;
-  }
-
-  const value = document.createElement('div');
-  value.className = 'history-value';
-  value.textContent = historyItem.newUrl;
-  value.innerHTML =  historyItem.newUrl.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
-
-  info.appendChild(label);
-  info.appendChild(value);
-
-  const del = document.createElement('button');
-  del.className = 'delete-btn';
-  del.textContent = '×';
-  del.title = 'Удалить';
-
-  del.addEventListener('click', (e) => {
-    e.stopPropagation();
-    deleteHistory(historyItem.id);
-  });
-
-  li.appendChild(info);
-  li.appendChild(del);
-
-  li.addEventListener('click', () => applyToCurrentTab(historyItem.postfixId));
-
-  return li;
-}
-
 function renderFolder(folder, items) {
   const box = document.createElement('div');
   box.className = 'folder' + (folder.collapsed ? ' collapsed' : '');
@@ -241,10 +171,6 @@ function renderFolder(folder, items) {
   name.className = 'folder-name';
   name.innerHTML =  folder.name.replace(searchQuery, '<span class="search-label-badge">' + searchQuery + '</span>');
   name.title = 'Двойной клик — переименовать';
-  name.addEventListener('dblclick', (e) => {
-    e.stopPropagation();
-    startRenameFolder(folder.id, name);
-  });
 
   const count = document.createElement('span');
   count.className = 'folder-count';
@@ -319,7 +245,7 @@ function renderItem(item, isRoot) {
   li.appendChild(cnt);
   li.appendChild(del);
 
-  li.addEventListener('click', () => applyToCurrentTab(item.id));
+  li.addEventListener('click', () => applyToCurrentTab(item.id, [], refresh, launchConfetti));
 
   // drag handlers
   li.addEventListener('dragstart', (e) => {
@@ -378,184 +304,64 @@ async function addPostfix() {
   const postfix = postfixEl.value.trim();
   if (!label || !postfix) return;
 
-  state.postfixes.push({
-    id: crypto.randomUUID(),
-    label,
-    postfix,
-    count: 0,
-    createdAt: Date.now(),
-    folderId: folderEl.value || null,
-    order: Date.now()
-  });
-  await saveData(state);
+  state.addPostfix(label,postfix, folderEl);
 
   labelEl.value = '';
   postfixEl.value = '';
   toggleAddForm(false);
   render();
+  refreshChromeMenu();
 }
 
 async function deletePostfix(id) {
   if (!confirm(`Вы уверены что хотите удалить постфикс?`)) return;
-
-  state.postfixes = state.postfixes.filter(p => p.id !== id);
-  await saveData(state);
-  render();
-}
-
-async function deleteHistory(id) {
-  if (!confirm(`Вы уверены что хотите удалить элемент истории?`)) return;
-
-  state.history = state.history.filter(p => p.id !== id);
-  await saveData(state);
-  render();
-}
-
-async function addHistory(postfix, tabId, url, newUrl) {
-  state.history.push({
-    id: crypto.randomUUID(),
-    postfixId: postfix.id,
-    url: url,
-    newUrl: newUrl,
-    tabId: tabId,
-    createdAt: Date.now(),
-  });
-
-  await saveData(state);
+  state.removePostfix(id)
 
   render();
+  refreshChromeMenu();
 }
 
 async function movePostfixToFolder(id, folderId) {
-  const p = state.postfixes.find(x => x.id === id);
-  if (!p) return;
-  if (p.folderId === folderId) return;
-  p.folderId = folderId;
-  await saveData(state);
+  state.updatePostfix(id, {
+    folderId : folderId
+  });
+
   render();
+  refreshChromeMenu();
 }
 
 async function addFolder() {
   const name = prompt('Название папки:', 'Новая папка');
   if (!name || !name.trim()) return;
-  state.folders.push({
-    id: crypto.randomUUID(),
-    name: name.trim(),
-    collapsed: false,
-    order: Date.now()
-  });
-  await saveData(state);
+  state.addFolder(name.trim())
+
   populateFolderSelect();
   render();
+  refreshChromeMenu();
 }
 
 async function deleteFolder(folderId) {
   const folder = state.folders.find(f => f.id === folderId);
   if (!folder) return;
   if (!confirm(`Удалить папку "${folder.name}"? Постфиксы внутри останутся (переедут в корень).`)) return;
-  state.folders = state.folders.filter(f => f.id !== folderId);
+
+  state.removeFolder(folderId);
+
   for (const p of state.postfixes) {
-    if (p.folderId === folderId) p.folderId = null;
+    if (p.folderId === folderId) state.updatePostfix(p.id, {folderId : null});
   }
-  await saveData(state);
+
   populateFolderSelect();
   render();
+  refreshChromeMenu();
 }
 
 async function toggleFolder(folderId) {
   const f = state.folders.find(x => x.id === folderId);
   if (!f) return;
-  f.collapsed = !f.collapsed;
-  await saveData(state);
+
+  state.updateFolder(folderId, {collapsed: !f.collapsed})
   render();
-}
-
-function startRenameFolder(folderId, nameEl) {
-  nameEl.contentEditable = 'true';
-  nameEl.focus();
-  // выделить весь текст
-  const range = document.createRange();
-  range.selectNodeContents(nameEl);
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(range);
-
-  const finish = async (save) => {
-    nameEl.contentEditable = 'false';
-    nameEl.removeEventListener('blur', onBlur);
-    nameEl.removeEventListener('keydown', onKey);
-    if (save) {
-      const newName = nameEl.textContent.trim();
-      const f = state.folders.find(x => x.id === folderId);
-      if (f && newName) {
-        f.name = newName;
-        await saveData(state);
-      }
-    }
-    populateFolderSelect();
-    render();
-  };
-  const onBlur = () => finish(true);
-  const onKey = (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
-    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
-  };
-  nameEl.addEventListener('blur', onBlur);
-  nameEl.addEventListener('keydown', onKey);
-}
-
-async function applyToCurrentTab(id) {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || !tab.url) return;
-
-  const item = state.postfixes.find(p => p.id === id);
-  if (!item) return;
-
-  const prev = item.count;
-  item.count += 1;
-  await saveData(state);
-
-  // конфетти при достижении 100 (и кратных 100 — почему бы и нет)
-  if (item.count >= 100 && prev < item.count && item.count % 100 === 0) {
-    launchConfetti();
-    // короткая задержка, чтобы конфетти успели стартовать перед переходом
-    setTimeout(() => navigateAndClose(tab.id, item, tab.url), 600);
-    return;
-  }
-
-  navigateAndClose(tab.id, item, tab.url);
-}
-
-async function navigateAndClose(tabId, postfixItem, url) {
-  let newUrl;
-  try {
-    if (postfixItem.postfix.startsWith('http://') || postfixItem.postfix.startsWith('https://')) {
-      newUrl = templatePostfix(postfixItem.postfix);
-
-      if (newUrl === null) {
-        return;
-      }
-
-      await addHistory(postfixItem, tabId, url, newUrl);
-      await chrome.tabs.create({ url: newUrl });
-
-      return;
-    }
-
-    newUrl = applyPostfix(url, postfixItem.postfix);
-  
-    if (newUrl === null) {
-      return;
-    }
-  } catch (e) {
-    alert('Не удалось применить постфикс: ' + e.message);
-    return;
-  }
-
-  await addHistory(postfixItem, tabId, url, newUrl);
-
-  await chrome.tabs.update(tabId, { url: newUrl });
-  //window.close();
 }
 
 // ==================== add form toggle ====================
@@ -634,12 +440,9 @@ function launchConfetti() {
 
 // ==================== init ====================
 
-async function showCurrentUrl() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  document.getElementById('currentUrl').textContent = tab && tab.url ? tab.url : '—';
-}
-
 document.addEventListener('DOMContentLoaded', async () => {
+  await state.init();
+
   document.getElementById('addToggleBtn').addEventListener('click', () => toggleAddForm());
   document.getElementById('historyToggleBtn').addEventListener('click', () => toggleHistory());
   document.getElementById('addFolderBtn').addEventListener('click', addFolder);
@@ -659,6 +462,5 @@ document.addEventListener('DOMContentLoaded', async () => {
     render();
   });
 
-  showCurrentUrl();
   await refresh();
 });
