@@ -388,6 +388,91 @@ function toggleHistory(force) {
   if (show) setTimeout(() => document.getElementById('labelInput').focus(), 50);
 }
 
+// ==================== state json ====================
+
+function formatStateJson() {
+  return JSON.stringify(state.data, null, 2);
+}
+
+function renderStateJson() {
+  const input = document.getElementById('stateJsonInput');
+  if (input) input.value = formatStateJson();
+}
+
+function setStateMessage(text, isError = false) {
+  const message = document.getElementById('stateMessage');
+  message.textContent = text;
+  message.hidden = !text;
+  message.classList.toggle('error', isError);
+}
+
+function toggleStateEditor(force) {
+  const sec = document.getElementById('stateSection');
+  const btn = document.getElementById('stateToggleBtn');
+  const show = typeof force === 'boolean' ? force : sec.hidden;
+  sec.hidden = !show;
+  btn.classList.toggle('active', !show);
+  sec.classList.toggle('hidden', show);
+
+  if (!show) {
+    renderStateJson();
+    setStateMessage('');
+    setTimeout(() => document.getElementById('stateJsonInput').focus(), 50);
+  }
+}
+
+async function applyStateJson(rawJson) {
+  let nextData;
+
+  try {
+    nextData = JSON.parse(rawJson);
+  } catch (e) {
+    setStateMessage('Ошибка JSON: ' + e.message, true);
+    return;
+  }
+
+  try {
+    await state.replaceData(nextData);
+    populateFolderSelect();
+    render();
+    renderStateJson();
+    await refreshChromeMenu();
+    setStateMessage('Сохранено');
+  } catch (e) {
+    setStateMessage(e.message, true);
+  }
+}
+
+async function applyStateFromEditor() {
+  await applyStateJson(document.getElementById('stateJsonInput').value);
+}
+
+async function importStateFromFile(file) {
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    document.getElementById('stateJsonInput').value = text;
+    await applyStateJson(text);
+  } catch (e) {
+    setStateMessage('Не удалось импортировать файл: ' + e.message, true);
+  }
+}
+
+function exportStateToFile() {
+  const blob = new Blob([formatStateJson()], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+
+  link.href = url;
+  link.download = `url-postfix-state-${date}.json`;
+  link.click();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  setStateMessage('Файл экспортирован');
+}
+
 // ==================== confetti ====================
 
 function launchConfetti() {
@@ -445,8 +530,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   document.getElementById('addToggleBtn').addEventListener('click', () => toggleAddForm());
   document.getElementById('historyToggleBtn').addEventListener('click', () => toggleHistory());
+  document.getElementById('stateToggleBtn').addEventListener('click', () => toggleStateEditor());
   document.getElementById('addFolderBtn').addEventListener('click', addFolder);
   document.getElementById('addBtn').addEventListener('click', addPostfix);
+  document.getElementById('applyStateBtn').addEventListener('click', applyStateFromEditor);
+  document.getElementById('importStateBtn').addEventListener('click', () => {
+    document.getElementById('stateFileInput').click();
+  });
+  document.getElementById('exportStateBtn').addEventListener('click', exportStateToFile);
+  document.getElementById('stateFileInput').addEventListener('change', async (e) => {
+    await importStateFromFile(e.target.files[0]);
+    e.target.value = '';
+  });
 
   document.getElementById('labelInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') document.getElementById('postfixInput').focus();

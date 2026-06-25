@@ -12,8 +12,9 @@
     <div class="topbar">
       <input type="text" id="searchInput" placeholder="Поиск…" autocomplete="off" />
       <button id="addToggleBtn" class="icon-btn" title="Добавить постфикс">+</button>
-      <button id="addFolderBtn" class="icon-btn" title="Новая папка"><img src="svg/add_folder_icon.svg" alt="folder_icon">
-      <button id="historyToggleBtn" class="icon-btn" title="История"><img src="svg/history_icon.svg" alt="history_icon">
+      <button id="addFolderBtn" class="icon-btn" title="Новая папка"><img src="svg/add_folder_icon.svg" alt="folder_icon"></button>
+      <button id="historyToggleBtn" class="icon-btn" title="История"><img src="svg/history_icon.svg" alt="history_icon"></button>
+      <button id="stateToggleBtn" class="icon-btn state-toggle-btn" title="JSON state">{}</button>
     </div>
 
     <div class="add-section hidden" id="addSection">
@@ -28,6 +29,17 @@
     </div>
 
     <div id="historySection" class="history-section hidden"></div>
+
+    <div id="stateSection" class="state-section hidden">
+      <textarea id="stateJsonInput" spellcheck="false"></textarea>
+      <div class="state-actions">
+        <button id="applyStateBtn">Применить</button>
+        <button id="importStateBtn">Импорт</button>
+        <button id="exportStateBtn">Экспорт</button>
+      </div>
+      <div id="stateMessage" class="state-message" hidden></div>
+      <input type="file" id="stateFileInput" accept="application/json,.json" hidden />
+    </div>
 
     <div id="tree" class="tree"></div>
 
