@@ -5,14 +5,14 @@ import { state } from './state/AppState.js'
 let searchQuery = '';
 
 export async function refresh() {
-  refreshChromeMenu();
+  await refreshChromeMenu();
 
   populateFolderSelect();
   render();
 }
 
 async function refreshChromeMenu() {
-  chrome.runtime.sendMessage({ action: 'refreshMenu' });
+  await chrome.runtime.sendMessage({ action: 'refreshMenu' });
 }
 
 // ==================== render ====================
@@ -304,40 +304,40 @@ async function addPostfix() {
   const postfix = postfixEl.value.trim();
   if (!label || !postfix) return;
 
-  state.addPostfix(label,postfix, folderEl);
+  await state.addPostfix(label,postfix, folderEl);
 
   labelEl.value = '';
   postfixEl.value = '';
   toggleAddForm(false);
   render();
-  refreshChromeMenu();
+  await refreshChromeMenu();
 }
 
 async function deletePostfix(id) {
   if (!confirm(`Вы уверены что хотите удалить постфикс?`)) return;
-  state.removePostfix(id)
+  await state.removePostfix(id)
 
   render();
-  refreshChromeMenu();
+  await refreshChromeMenu();
 }
 
 async function movePostfixToFolder(id, folderId) {
-  state.updatePostfix(id, {
+  await state.updatePostfix(id, {
     folderId : folderId
   });
 
   render();
-  refreshChromeMenu();
+  await refreshChromeMenu();
 }
 
 async function addFolder() {
   const name = prompt('Название папки:', 'Новая папка');
   if (!name || !name.trim()) return;
-  state.addFolder(name.trim())
+  await state.addFolder(name.trim())
 
   populateFolderSelect();
   render();
-  refreshChromeMenu();
+  await refreshChromeMenu();
 }
 
 async function deleteFolder(folderId) {
@@ -345,15 +345,15 @@ async function deleteFolder(folderId) {
   if (!folder) return;
   if (!confirm(`Удалить папку "${folder.name}"? Постфиксы внутри останутся (переедут в корень).`)) return;
 
-  state.removeFolder(folderId);
+  await state.removeFolder(folderId);
 
   for (const p of state.postfixes) {
-    if (p.folderId === folderId) state.updatePostfix(p.id, {folderId : null});
+    if (p.folderId === folderId) await state.updatePostfix(p.id, {folderId : null});
   }
 
   populateFolderSelect();
   render();
-  refreshChromeMenu();
+  await refreshChromeMenu();
 }
 
 async function toggleFolder(folderId) {
