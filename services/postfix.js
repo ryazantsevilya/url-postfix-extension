@@ -22,19 +22,24 @@ export async function applyToCurrentTab(id, postfixParams = [], beforeNavigateCa
   if (item.count >= CONFETI_STEP && prev < item.count && item.count % CONFETI_STEP === 0) {
     confetiCallback();
     // короткая задержка, чтобы конфетти успели стартовать перед переходом
-    setTimeout(() => navigateAndClose(tab.id, item, tab.url, postfixParams), 600);
+    setTimeout(() => navigateAndClose(tab, item, postfixParams), 600);
     beforeNavigateCallback();
     return;
   }
 
-  navigateAndClose(tab.id, item, tab.url, postfixParams);
+  navigateAndClose(tab, item, postfixParams);
 
   beforeNavigateCallback();
 }
 
-export async function navigateAndClose(tabId, postfixItem, url, postfixParams = []) {
+export async function navigateAndClose(tab, postfixItem, postfixParams = []) {
+  let tabId = tab.id;
+  let url = tab.url;
+
   let newUrl;
   try {
+    postfixItem = templatePostfixTabParams(postfixItem, tab)
+
     if (postfixItem.postfix.startsWith('http://') || postfixItem.postfix.startsWith('https://')) {
       newUrl = templatePostfix(postfixItem.postfix, postfixParams);
 
@@ -63,6 +68,60 @@ export async function navigateAndClose(tabId, postfixItem, url, postfixParams = 
       
   await chrome.tabs.update(tabId, { url: newUrl });
   //window.close();
+}
+
+export function templatePostfixTabParams(postfixItem, tab) {
+  const tabUrl = tab?.url;
+  
+  if (!tabUrl || !URL.canParse(tabUrl)) {
+    return postfixItem;
+  }
+
+  const tabUrlObject = new URL(tabUrl);
+  const postfix = postfixItem.postfix;
+  
+  if (!postfix || typeof postfix !== 'string') {
+    return postfixItem;
+  }
+  
+  const placeholderRegex = /\{tab\.url\.(\w+)\}/g;
+  const matches = [...postfix.matchAll(placeholderRegex)];
+  
+  if (matches.length === 0) {
+    return postfixItem;
+  }
+
+  let result = postfix;
+  
+  // Обрабатываем каждый уникальный ключ
+  const processedKeys = new Set();
+  
+  for (const match of matches) {
+    const [fullMatch, funcName] = match;
+    
+    // Пропускаем уже обработанные ключи
+    if (processedKeys.has(funcName)) {
+      continue;
+    }
+    
+    // Проверяем, что свойство существует и является строкой
+    if (typeof tabUrlObject[funcName] === 'string') {
+      try {
+        const value = tabUrlObject[funcName];
+        
+        // Заменяем все вхождения данного плейсхолдера
+        result = result.replaceAll(fullMatch, value);
+        processedKeys.add(funcName);
+      } catch (error) {
+        console.warn(`Failed to process URL method "${funcName}":`, error);
+      }
+    }
+  }
+
+  return {
+    ...postfixItem,
+    postfix: result
+  };
 }
 
 export function templatePostfix(postfix, postfixParams = []) {
