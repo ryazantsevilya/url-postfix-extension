@@ -94,6 +94,9 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   if (postfixId === ROOT_MENU_ID) return; // родительский элемент
 
+  // Переинициализиаруем состояние при нажатии. (chrome чистит память при долгом простое)
+  await initState();
+
   // В случае если это ссылка
   if (linkUrl) {
       await applyToCurrentTab(postfixId, [linkUrl]);
