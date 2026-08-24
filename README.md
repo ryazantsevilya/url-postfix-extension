@@ -3,7 +3,9 @@
 Chrome-расширение для управления часто используемыми query-параметрами и URL-шаблонами. Сохраняешь постфиксы вроде `theme=dark&debug=true`, группируешь их по папкам и применяешь к текущей вкладке, выделенному тексту или ссылке из контекстного меню.
 
 ![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue) ![No deps](https://img.shields.io/badge/dependencies-none-green) ![License MIT](https://img.shields.io/badge/license-MIT-lightgrey)
+[![Docs](https://img.shields.io/badge/docs-github--pages-blueviolet)](https://ryazantsevilya.github.io/url-postfix-extension/)
 
+> 📖 **Полная документация**: [https://ryazantsevilya.github.io/url-postfix-extension/](https://ryazantsevilya.github.io/url-postfix-extension/))
 ## Зачем
 
 При разработке и проверке часто приходится открывать одну и ту же страницу с разными параметрами: feature flags, debug-режимы, языки, UTM-метки, A/B-варианты. Вместо ручного редактирования адресной строки можно сохранить наборы параметров один раз и применять их из popup или контекстного меню.
