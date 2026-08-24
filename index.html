@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>URL Postfix Manager — Документация</title>
+    <link type="text/css" rel="stylesheet" href="css/main.css" />
+</head>
+<body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+    <!-- ====== SIDEBAR ====== -->
+    <aside class="sidebar" id="sidebar">
+        <img src="img/icon48.png" alt="logo">
+        <div class="logo">
+            URL Postfix Manager
+            <small>v1.1.1</small>
+        </div>
+        <div class="subtitle">Chrome Extension &bull; Manifest V3</div>
+
+        <nav id="sidebarNav">
+            <a href="#about" class="active">О расширении</a>
+            <a href="#usage">Использование</a>
+            <a href="#postfix">Постфиксы</a>
+            <a href="#templates">URL-шаблоны</a>
+            <a href="#folders">Папки</a>
+            <a href="#history">История</a>
+            <a href="#search">Поиск</a>
+            <a href="#json">JSON State</a>
+            <a href="#context">Контекстное меню</a>
+            <a href="#storage">Хранение данных</a>
+            <a href="#structure">Структура проекта</a>
+            <a href="#permissions">Разрешения</a>
+            <a href="#dev">Разработка</a>
+        </nav>
+
+        <div class="footer-side">
+            <span>📄 <a href="#">MIT License</a></span><br />
+            <span style="font-size:0.75rem;">vanilla JS &bull; no deps</span>
+        </div>
+    </aside>
+
+    <!-- ====== MAIN CONTENT ====== -->
+    <main class="main" id="mainContent">
+
+        <!-- mobile toggle -->
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+
+        <div class="content-wrap">
+
+            <!-- HEADER -->
+            <header>
+                <h1>URL Postfix Manager</h1>
+                <div class="meta">
+                    <span>Chrome Extension</span>
+                    <span>Manifest V3</span>
+                    <span>⚡ Vanilla JS</span>
+                    <span><span class="badge">MIT</span> License</span>
+                </div>
+                <p style="font-size:1.05rem; color:#2c313a;">
+                    Сохраняйте query-параметры и URL-шаблоны, применяйте к вкладкам,
+                    выделенному тексту или ссылкам — всё через popup и контекстное меню.
+                </p>
+            </header>
+
+            <!-- ============================================================ -->
+            <h2 id="about">Зачем</h2>
+            <p>
+                При разработке и тестировании часто приходится открывать одну и ту же страницу
+                с разными параметрами: feature flags, debug-режимы, языки, UTM-метки,
+                A/B-варианты. Вместо ручного редактирования адресной строки вы можете
+                сохранить наборы параметров один раз и применять их из popup или
+                контекстного меню.
+            </p>
+
+            <div class="screenshot">
+                <img src="img/Url_postfix_manager_popup.png" alt="Скриншот popup" style="max-width:380px;" />
+                <img src="img/use_case_1.gif" alt="Использование" style="max-width:380px;" />
+            </div>
+
+            <h2 id="usage">Использование</h2>
+
+            <h3>➕ Добавить постфикс</h3>
+            <ol>
+                <li>Откройте popup расширения (клик по иконке <img src="img/icon16.png">).</li>
+                <li>Нажмите <span class="icon-label">＋</span>.</li>
+                <li>Введите название и постфикс, например:</li>
+            </ol>
+            <pre><code>Название: dark mode
+        Постфикс: theme=dark&amp;lang=ru</code></pre>
+            <ol start="4">
+                <li>При необходимости выберите папку.</li>
+                <li>Нажмите <strong>Сохранить</strong> или <kbd>Enter</kbd>.</li>
+            </ol>
+
+            <h3>▶️ Применить постфикс</h3>
+            <p>
+                Клик по постфиксу в popup применяет его к URL текущей активной вкладки.
+            </p>
+            <pre><code>URL:      https://example.com/page?lang=en&amp;id=42
+        Постфикс: lang=ru&amp;debug=true
+        Итог:     https://example.com/page?lang=ru&amp;id=42&amp;debug=true</code></pre>
+            <p>
+                <code>lang</code> будет перезаписан, а <code>debug</code> добавлен.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2 id="postfix">Форматы query-постфикса</h2>
+            <p>Все эти варианты эквивалентны:</p>
+            <pre><code>theme=dark&amp;lang=ru
+        ?theme=dark&amp;lang=ru
+        &amp;theme=dark&amp;lang=ru</code></pre>
+
+            <!-- ============================================================ -->
+            <h2 id="templates">URL-шаблоны</h2>
+            <p>
+                Если постфикс начинается с <code>http://</code> или <code>https://</code>,
+                расширение считает его URL-шаблоном и открывает результат в новой вкладке.
+            </p>
+            <pre><code>https://example.com/search?q={query}</code></pre>
+            <p>
+                При применении к выделенному тексту или ссылке <code>{query}</code> будет
+                заменен на переданное значение. Если применить такой шаблон из popup
+                без выделенного текста или ссылки, расширение запросит значение вручную.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2 id="folders">Папки</h2>
+            <ul>
+                <li>Кнопка <span class="icon-label">📁</span> в topbar создаёт новую папку.</li>
+                <li>Клик по шапке папки сворачивает или разворачивает её.</li>
+                <li>
+                    <span class="icon-label">✕</span> справа от названия удаляет папку,
+                    а постфиксы внутри переезжают в корень.
+                </li>
+                <li><strong>Drag &amp; drop</strong> постфикса на папку перемещает его в эту папку.</li>
+                <li>Drag &amp; drop на корневую область перемещает постфикс из папки в корень.</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2 id="history">История</h2>
+            <p>
+                Кнопка <span class="icon-label">⏱️</span> в topbar показывает
+                применённые постфиксы. Элементы истории можно открыть повторно или удалить.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2 id="search">Поиск</h2>
+            <p>
+                Поле поиска фильтрует постфиксы по названию и содержимому.
+                Если папка совпадает с поиском, показываются её элементы.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2 id="json">JSON State</h2>
+            <p>
+                Кнопка <span class="icon-label">{ }</span> в topbar открывает
+                редактор состояния. В нём можно:
+            </p>
+            <ul>
+                <li>посмотреть текущее состояние в JSON;</li>
+                <li>вручную изменить JSON и нажать <strong>Применить</strong>;</li>
+                <li>импортировать состояние из <code>.json</code> файла;</li>
+                <li>экспортировать текущее состояние в файл.</li>
+            </ul>
+            <p>
+                После применения или импорта popup и context menu обновляются сразу.
+            </p>
+
+            <h3>Валидация при импорте</h3>
+            <ul>
+                <li><code>postfixes</code>, <code>folders</code> и <code>history</code> должны быть массивами;</li>
+                <li>у папок и постфиксов должны быть уникальные <code>id</code>;</li>
+                <li>нельзя использовать зарезервированный <code>id</code> <code>applyPostfixAction</code>;</li>
+                <li><code>folderId</code> должен ссылаться на существующую папку или быть <code>null</code>;</li>
+                <li>у папки должно быть строковое <code>name</code>;</li>
+                <li>у постфикса должны быть строковые <code>label</code> и <code>postfix</code>.</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2 id="context">Контекстное меню</h2>
+            <p>
+                Расширение добавляет пункт <strong>URL Postfix Manager</strong>
+                в контекстное меню Chrome для выделенного текста и ссылок.
+            </p>
+            <ul>
+                <li>Если применить постфикс к ссылке, значение ссылки передаётся в шаблон.</li>
+                <li>Если применить постфикс к выделенному тексту, выделенный текст передаётся в шаблон.</li>
+                <li>Обычные query-постфиксы также доступны из контекстного меню.</li>
+            </ul>
+
+            <!-- ============================================================ -->
+            <h2 id="storage">Хранение данных</h2>
+            <p>
+                Все данные хранятся локально в <code>chrome.storage.local</code>
+                под ключом <code>data_v2</code>.
+            </p>
+            <pre><code>{
+        "postfixes": [
+            {
+            "id": "uuid",
+            "label": "dark mode",
+            "postfix": "theme=dark",
+            "count": 42,
+            "createdAt": 1700000000000,
+            "folderId": null,
+            "order": 1700000000000
+            }
+        ],
+        "folders": [
+            {
+            "id": "uuid",
+            "name": "Работа",
+            "collapsed": false,
+            "order": 1700000000000
+            }
+        ],
+        "history": [
+            {
+            "id": "uuid",
+            "postfix": {
+                "id": "uuid",
+                "label": "dark mode",
+                "postfix": "theme=dark"
+            },
+            "postfixParams": [],
+            "newUrl": "https://example.com/?theme=dark",
+            "url": "https://example.com/",
+            "tabId": 123,
+            "createdAt": 1700000000000
+            }
+        ]
+        }</code></pre>
+
+            <!-- ============================================================ -->
+            <h2 id="structure">Структура проекта</h2>
+            <pre><code>url-postfix-extension/
+        ├── manifest.json          # Manifest V3
+        ├── background.js          # service worker и context menu
+        ├── popup.html             # разметка popup
+        ├── popup.css              # стили popup
+        ├── popup.js               # UI, drag &amp; drop, импорт/экспорт JSON
+        ├── state/
+        │   └── AppState.js        # состояние и chrome.storage.local
+        ├── services/
+        │   ├── postfix.js         # применение постфиксов и URL-шаблонов
+        │   └── history.js         # история
+        ├── icons/                 # иконки расширения
+        └── svg/                   # иконки UI</code></pre>
+            <p>
+                Никаких build-шагов, фреймворков и зависимостей.
+                Vanilla JS + Chrome Extension APIs.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2 id="permissions">Разрешения</h2>
+            <p>В <code>manifest.json</code> используются разрешения:</p>
+            <table>
+                <tr><th>Разрешение</th><th>Назначение</th></tr>
+                <tr><td><code>storage</code></td><td>локальное хранение состояния</td></tr>
+                <tr><td><code>activeTab</code></td><td>работа с текущей активной вкладкой</td></tr>
+                <tr><td><code>tabs</code></td><td>обновление текущей вкладки и открытие новых</td></tr>
+                <tr><td><code>contextMenus</code></td><td>пункты контекстного меню</td></tr>
+                <tr><td><code>scripting</code></td><td>зарезервировано для будущих возможностей</td></tr>
+            </table>
+            <p>
+                Расширение хранит данные локально и не отправляет их на внешние серверы.
+            </p>
+
+            <!-- ============================================================ -->
+            <h2 id="dev">Разработка</h2>
+            <p>
+                Проект не требует установки зависимостей. После изменения файлов
+                перезагрузите unpacked extension в <code>chrome://extensions/</code>.
+            </p>
+            <p>Быстрая синтаксическая проверка:</p>
+            <pre><code>node --check popup.js
+        node --check background.js
+        node --check state/AppState.js
+        node --check services/postfix.js
+        node --check services/history.js</code></pre>
+
+            <!-- ============================================================ -->
+            <div class="divider"></div>
+
+            <div class="footer-main">
+                <span>
+                    <img src="img/icon16.png"> <a href="#">URL Postfix Manager</a> &mdash; документация
+                </span>
+                <span class="license">MIT License</span>
+            </div>
+
+        </div><!-- /content-wrap -->
+    </main>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggleBtn = document.getElementById('menuToggle');
+            const navLinks = document.querySelectorAll('#sidebarNav a');
+            const mainContent = document.getElementById('mainContent');
+
+            // === Mobile menu toggle ===
+            function openMenu() {
+                sidebar.classList.add('open');
+                overlay.classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeMenu() {
+                sidebar.classList.remove('open');
+                overlay.classList.remove('open');
+                document.body.style.overflow = '';
+            }
+
+            toggleBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (sidebar.classList.contains('open')) {
+                    closeMenu();
+                } else {
+                    openMenu();
+                }
+            });
+
+            overlay.addEventListener('click', closeMenu);
+
+            // Close menu on link click (mobile)
+            navLinks.forEach(function(link) {
+                link.addEventListener('click', function() {
+                    if (window.innerWidth <= 900) {
+                        closeMenu();
+                    }
+                });
+            });
+
+            // === Active link highlight on scroll ===
+            const sections = [];
+            navLinks.forEach(function(link) {
+                const targetId = link.getAttribute('href').substring(1);
+                const el = document.getElementById(targetId);
+                if (el) sections.push({ id: targetId, el: el, link: link });
+            });
+
+            function updateActiveLink() {
+                const scrollY = mainContent.scrollTop + 100;
+
+                let currentId = null;
+                for (let i = sections.length - 1; i >= 0; i--) {
+                    const sec = sections[i];
+                    if (sec.el.offsetTop <= scrollY) {
+                        currentId = sec.id;
+                        break;
+                    }
+                }
+
+                navLinks.forEach(function(link) {
+                    link.classList.remove('active');
+                    const href = link.getAttribute('href').substring(1);
+                    if (href === currentId) {
+                        link.classList.add('active');
+                    }
+                });
+            }
+
+            mainContent.addEventListener('scroll', updateActiveLink);
+            // initial highlight
+            setTimeout(updateActiveLink, 50);
+
+            // Also update on resize
+            window.addEventListener('resize', updateActiveLink);
+
+            // === Smooth scroll for sidebar links ===
+            navLinks.forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    const targetId = this.getAttribute('href').substring(1);
+                    const targetEl = document.getElementById(targetId);
+                    if (targetEl) {
+                        e.preventDefault();
+                        const offset = 20;
+                        const targetPos = targetEl.offsetTop - offset;
+                        mainContent.scrollTo({ top: targetPos, behavior: 'smooth' });
+                    }
+                });
+            });
+
+        })();
+    </script>
+</body>
+</html>
